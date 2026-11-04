@@ -1,0 +1,21 @@
+{
+  "name": "apresentacao04112026",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "slidev build",
+    "dev": "slidev --open",
+    "export": "slidev export"
+  },
+  "dependencies": {
+    "@slidev/cli": "^53.0.0",
+    "@slidev/theme-default": "latest",
+    "@slidev/theme-seriph": "latest",
+    "vue": "^3.5.33"
+  },
+  "devDependencies": {
+    "@iconify-json/logos": "^1.2.19",
+    "playwright-chromium": "^1.64.1",
+    "qrcode": "^1.5.4"
+  }
+}
