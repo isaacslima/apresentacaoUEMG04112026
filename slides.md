@@ -852,6 +852,8 @@ Billing alarm: primeira coisa a configurar numa conta pessoal!
 
 # Logs: o jeito errado 😱
 
+<IncomingCall :at="6" label="📞 Sala de crise: gestor chamando…" />
+
 <div class="grid grid-cols-[1fr_1.2fr_40px] gap-5 log-slide">
 <div>
 
