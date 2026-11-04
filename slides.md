@@ -146,6 +146,14 @@ Apresentação pessoal. Convidar a turma a escanear os QR codes do GitHub e Link
   </div>
   <div v-click class="timeline-item">
     <div class="dot" />
+    <div><span class="year">2017</span> <b>Atuação como desenvolvedor autônomo</b></div>
+  </div>
+<div v-click class="timeline-item">
+    <div class="dot" />
+    <div><span class="year">2018</span> <b>Trabalhando com times de desenvolvimento</b></div>
+  </div>
+  <div v-click class="timeline-item">
+    <div class="dot" />
     <div><span class="year">2025</span> <b>Especialização em Arquitetura de Software Distribuído</b></div>
   </div>
   <div v-click class="timeline-item">
@@ -1254,7 +1262,7 @@ Revisão rápida com as analogias. Bom momento para perguntas.
 - 🆓 Crie uma conta e use o **Free Tier** / créditos para novas contas
 - 🔔 **Primeiro passo:** configure um **alarme de billing** (AWS Budgets) — evite sustos!
 - 🔐 Não use o usuário root no dia a dia; ative **MFA**
-- 🎓 **AWS Skill Builder** e **AWS Educate** — cursos gratuitos
+- 🎓 **Aws Student Builder**, **AWS Skill Builder** e **AWS Educate** — cursos gratuitos
 - 🏅 Certificação de entrada: **AWS Certified Cloud Practitioner**
 - 🧪 Projeto prático: site estático no **S3 + CloudFront**
 
