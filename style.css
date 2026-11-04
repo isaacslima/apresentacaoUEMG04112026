@@ -61,3 +61,28 @@ html.dark .slidev-layout {
 html.dark .aws-logo [fill="#252f3e"] {
   fill: #fff;
 }
+
+/* Slides de logs: código compacto e "terminal" do CloudWatch */
+.log-slide .slidev-code { font-size: 0.62rem !important; line-height: 1.35 !important; }
+.terminal {
+  line-height: 1.45;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.7rem;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #0f1724;
+  color: #d1d5db;
+}
+.terminal-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+.terminal pre {
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: inherit;
+}

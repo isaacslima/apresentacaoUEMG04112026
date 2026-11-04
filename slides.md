@@ -727,6 +727,88 @@ Ex.: imagens de um e-commerce, vídeos, o próprio front-end React/Angular.
 
 ---
 
+# Como uma CDN funciona na prática
+
+<div class="grid grid-cols-2 gap-6">
+  <div v-click class="card !p-2">
+    <div class="text-center font-bold text-red-500">❌ Sem CDN</div>
+    <CdnMap />
+    <div class="text-xs text-center op-70">todo mundo atravessa o planeta até a origem</div>
+  </div>
+  <div v-click class="card !p-2 !border-[#10b981]">
+    <div class="text-center font-bold text-emerald-500">✅ Com CloudFront</div>
+    <CdnMap cdn />
+    <div class="text-xs text-center op-70"><span class="inline-block w-2.5 h-2.5 rounded-full bg-[#8c4fff]" /> edge location perto de cada usuário</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-4 gap-3 mt-4 text-sm">
+  <div v-click class="cdn-step">
+    <div class="step-n">1</div>
+    👤 <b>Ana</b> (BH) pede <code>foto.png</code><br>
+    📍 Edge SP: <span class="tag miss">MISS</span> "não tenho"
+  </div>
+  <div v-click class="cdn-step">
+    <div class="step-n">2</div>
+    📍 Edge busca na 🪣 <b>origem</b> (~120 ms) e <b>guarda uma cópia</b>
+  </div>
+  <div v-click class="cdn-step">
+    <div class="step-n">3</div>
+    👤 <b>Bruno</b> (RJ) pede a mesma foto<br>
+    📍 Edge SP: <span class="tag hit">HIT</span> ⚡ ~15 ms
+  </div>
+  <div v-click class="cdn-step">
+    <div class="step-n">4</div>
+    ⏱️ Venceu o <b>TTL</b> ou houve <b>invalidação</b>? A próxima busca volta à origem
+  </div>
+</div>
+
+<div class="text-xs op-50 mt-2">Latências aproximadas, só para ilustrar.</div>
+
+<style>
+.cdn-step {
+  position: relative;
+  padding: 10px 12px 10px 14px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  line-height: 1.5;
+}
+.step-n {
+  position: absolute;
+  top: -10px;
+  left: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: var(--aws-orange);
+  color: #000;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  color: #fff;
+}
+.tag.miss { background: #ef4444; }
+.tag.hit { background: #10b981; }
+</style>
+
+<!--
+Mostrar primeiro o mapa sem CDN: as bolinhas vermelhas demoram para chegar (latência alta, origem sobrecarregada).
+Depois com CloudFront: as bolinhas verdes só vão até a edge mais próxima.
+Sequência 1→4: o primeiro usuário "paga" o MISS; todos os seguintes ganham o HIT.
+TTL = quanto tempo a cópia vale. Invalidação = forçar a edge a buscar de novo (ex.: deploy de nova versão do site).
+-->
+
+---
+
 <AwsService icon="cloudwatch" name="CloudWatch" full="Observabilidade da AWS" tagline="Os olhos e ouvidos da sua aplicação" />
 
 <div class="grid grid-cols-4 gap-4">
@@ -764,6 +846,270 @@ SE <span class="text-aws">CPUUtilization &gt; 70%</span> por 5 min
 <!--
 Ligar com o slide de Auto Scaling do EC2: quem dispara a escala é um alarme do CloudWatch.
 Billing alarm: primeira coisa a configurar numa conta pessoal!
+-->
+
+---
+
+# Logs: o jeito errado 😱
+
+<div class="grid grid-cols-[1fr_1.2fr_40px] gap-5 log-slide">
+<div>
+
+```csharp {all|6-9|all}
+public class PagamentoService
+{
+    public async Task Processar(Pedido pedido)
+    {
+        try { await _gateway.Cobrar(pedido); }
+        catch (Exception)
+        {
+            throw new Exception("Erro"); // 🙈 engoliu o motivo
+        }
+    }
+}
+```
+
+<div v-click class="terminal mt-3">
+  <div class="terminal-title"><AwsIcon name="cloudwatch" /> CloudWatch Logs · /loja/prod</div>
+  <div>19:42:13 <span class="text-red-400">Erro</span></div>
+  <div>19:42:15 <span class="text-red-400">Erro</span></div>
+  <div>19:43:01 <span class="text-red-400">Erro</span></div>
+  <div class="mt-1 op-70">Qual sistema? Qual classe? Qual pedido? Por quê? 🤷</div>
+</div>
+
+</div>
+<div>
+
+<div class="text-sm font-bold mb-2 op-80">🌙 Sexta-feira, horário de pico</div>
+
+<div class="pain-timeline">
+  <div v-click><span class="hora">19:42</span> 📉 Pagamentos começam a falhar, e o log só diz "Erro"</div>
+  <div v-click><span class="hora">19:50</span> 📱 Gestor liga: "o que está acontecendo?" E <b>liga de novo a cada 5 minutos</b></div>
+  <div v-click><span class="hora">20:15</span> 🚨 <b>Sala de crise</b>: dev, DBA e infra acionados, mais o gestor na call</div>
+  <div v-click><span class="hora">20:40</span> 🤯 Cada um com uma teoria, todos perguntando "e aí?". O dev <b>não consegue raciocinar</b></div>
+  <div v-click><span class="hora">21:15</span> 🐞 Debug remoto em produção: o breakpoint <b>trava a loja para todos</b>. Piorou!</div>
+  <div v-click><span class="hora">22:30</span> 🔁 Adiciona prints, faz novo deploy às pressas e espera o erro voltar</div>
+  <div v-click><span class="hora">23:10</span> 😩 Descobre: <b>timeout no gateway de pagamento</b></div>
+</div>
+
+<div v-click class="analogy mt-3 text-sm !border-red-500">
+<b>~3h30</b> de loja sem vender e <b>40 ligações</b> do gestor. E a conta ainda nem chegou…
+</div>
+
+</div>
+
+<div class="pressure">
+  <div class="pressure-label">😰</div>
+  <div class="pressure-tube">
+    <div class="pressure-fill" :style="{ height: `${Math.min(Math.max($clicks - 3, 0), 8) / 8 * 100}%` }" />
+  </div>
+  <div class="pressure-label text-[0.55rem] op-70">pressão</div>
+</div>
+</div>
+
+<style>
+.pain-timeline { display: flex; flex-direction: column; gap: 5px; font-size: 0.74rem; }
+.pain-timeline > div {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  border-left: 3px solid #ef4444;
+}
+.hora {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.68rem;
+  color: #ef4444;
+  margin-right: 6px;
+}
+.pressure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  padding-top: 28px;
+}
+.pressure-tube {
+  position: relative;
+  flex: 1;
+  width: 16px;
+  border-radius: 9999px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+}
+.pressure-fill {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(0deg, #f59e0b, #ef4444 60%, #b91c1c);
+  transition: height 0.6s ease-out;
+  animation: shake 0.25s linear infinite;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(1px); }
+}
+</style>
+
+<!--
+Cenário real e comum: catch genérico que joga fora a exceção original.
+Mostrar o termômetro subindo a cada clique: quanto mais gente cobrando, pior a capacidade de raciocinar.
+Sala de crise sem informação vira um lugar de opiniões, não de dados.
+Debug remoto em produção: um breakpoint pausa a thread/processo e afeta clientes reais.
+-->
+
+---
+
+# A conta do incidente 💸
+
+<div class="text-sm op-60 -mt-2 mb-4">Estimativa ilustrativa: ticket médio de R$ 180 e ~40 pedidos por hora no horário de pico</div>
+
+<div class="grid grid-cols-3 gap-4">
+  <div v-click class="bill-card">
+    <div class="text-3xl">🛒</div>
+    <div class="bill-value text-red-500">R$ 25.200</div>
+    <div class="text-sm font-bold">em vendas perdidas</div>
+    <div class="text-xs op-70 mt-1">~140 pedidos não concluídos em 3h30</div>
+  </div>
+  <div v-click class="bill-card">
+    <div class="text-3xl">⏰</div>
+    <div class="bill-value text-amber-500">R$ 1.800</div>
+    <div class="text-sm font-bold">de hora extra</div>
+    <div class="text-xs op-70 mt-1">3 profissionais × 4 h × R$ 150/h</div>
+  </div>
+  <div v-click class="bill-card">
+    <div class="text-3xl">😞</div>
+    <div class="bill-value">Ana desistiu</div>
+    <div class="text-sm font-bold">e comprou no concorrente</div>
+    <div class="text-xs op-70 mt-1">e talvez nunca mais volte</div>
+  </div>
+</div>
+
+<div v-click class="grid grid-cols-3 gap-4 mt-4 text-sm">
+  <div class="card">📢 Reclamações nas redes sociais</div>
+  <div class="card">⭐ Reputação e avaliações da loja</div>
+  <div class="card">😴 Time exausto no dia seguinte</div>
+</div>
+
+<div v-click class="analogy mt-5 text-center !text-lg">
+≈ <b class="text-red-500">R$ 27 mil</b> em uma noite, por causa de um log que dizia só <code>"Erro"</code>.<br>
+<span class="text-sm op-80">Um log bem feito custa ~5 linhas de código.</span>
+</div>
+
+<style>
+.bill-card {
+  text-align: center;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.bill-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  margin-top: 6px;
+  font-family: 'Fira Code', monospace;
+}
+</style>
+
+<!--
+Números ilustrativos para mostrar a ordem de grandeza: 40 pedidos/h × 3,5 h ≈ 140 pedidos × R$ 180 ≈ R$ 25.200.
+Hora extra: dev, DBA e infra, 4 horas cada.
+O custo invisível (reputação, cliente que não volta) costuma ser maior que o visível.
+-->
+
+
+---
+
+# Logs: o jeito certo ✅
+
+<div class="grid grid-cols-2 gap-6 log-slide">
+<div>
+
+```csharp {all|9-11|12|all}
+public class PagamentoService(
+    ILogger<PagamentoService> logger, IGateway gateway)
+{
+    public async Task Processar(Pedido pedido)
+    {
+        try { await gateway.Cobrar(pedido); }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Falha ao cobrar pedido {PedidoId} no {Gateway}",
+                pedido.Id, "PagaFacil");
+            throw; // mantém a exceção original
+        }
+    }
+}
+```
+
+<div v-click class="text-xs op-70 mt-2">
+🏷️ <b>sistema</b>, <b>ambiente</b> e <b>traceId</b> são incluídos automaticamente pela configuração do logger, e não à mão em cada linha.
+</div>
+
+</div>
+<div>
+
+<div v-click class="terminal">
+  <div class="terminal-title"><AwsIcon name="cloudwatch" /> CloudWatch Logs · /loja/prod · JSON</div>
+<pre class="!m-0 !p-0 !bg-transparent">{
+  "timestamp": "2026-11-04T19:42:13Z",
+  "level":     "<span class="text-red-400">Error</span>",
+  "sistema":   "<span class="text-aws">loja-api</span>",
+  "ambiente":  "prod",
+  "classe":    "<span class="text-aws">PagamentoService</span>",
+  "metodo":    "<span class="text-aws">Processar</span>",
+  "traceId":   "7f3a9c1e",
+  "pedidoId":  <span class="text-aws">4821</span>,
+  "mensagem":  "Falha ao cobrar pedido 4821 no PagaFacil",
+  "erro":      "<span class="text-red-400">TimeoutException: 5000ms</span>
+                at PagamentoService.cs:<span class="text-aws">6</span>"
+}</pre>
+</div>
+
+<div v-click class="terminal mt-3">
+  <div class="terminal-title">🔎 Logs Insights</div>
+<pre class="!m-0 !p-0 !bg-transparent">fields @timestamp, classe, pedidoId, erro
+| filter level = "Error" and sistema = "loja-api"
+| stats count() by classe</pre>
+</div>
+
+</div>
+</div>
+
+<div class="grid grid-cols-2 gap-4 mt-3">
+  <div v-click class="analogy text-sm !border-emerald-500">
+    ⏱️ <b>19:44</b>, 2 minutos depois: já sabemos o sistema, a classe, o pedido e o motivo.
+  </div>
+  <div v-click class="analogy text-sm !border-emerald-500">
+    🔔 Um <b>alarme</b> com mais de 10 erros em 5 min avisa o time <b>antes</b> do cliente ligar.
+  </div>
+</div>
+
+<!--
+Mesmo erro, mesmo horário: com log estruturado, a investigação vira uma consulta.
+Padrão mínimo de um bom log: timestamp, nível, sistema, ambiente, classe/método, ID de correlação (traceId), IDs de negócio e a exceção original.
+traceId permite seguir a mesma requisição por API Gateway → ECS → outros serviços.
+Nunca registrar senha, número de cartão ou dados pessoais sensíveis.
+-->
+
+---
+
+# Dashboard: o incidente numa única tela 📊
+
+<CloudWatchDashboard class="mt-2" />
+
+<!--
+Mesmo incidente do slide anterior, agora com dashboard:
+1. KPIs: pedidos caindo, erro em pagamentos acima do limite, latência do gateway no teto (timeout).
+2. Gráfico: o pico começa às 19:42, o alarme dispara às 19:44, o cupom sai às 19:50 e a correção às 19:58.
+3. Logs Insights mostra que quase todo erro vem da PagamentoService.
+4. Últimos erros com pedido e motivo, alarmes em vermelho e o restante saudável (CPU, 5xx): não é infraestrutura.
+5. O marketing também olha o dashboard: vê os 52 pedidos com falha e envia um cupom de 10%, e 37 clientes concluem a compra.
+Comparar: sem logs, Ana desistiu e foi para o concorrente; com dados, o time de negócio também age.
 -->
 
 ---
